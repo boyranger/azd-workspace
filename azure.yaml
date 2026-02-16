@@ -1,4 +1,4 @@
-name: litellm
+name: zeroclaw
 metadata:
   subscription: ${AZURE_SUBSCRIPTION_ID}
   location: ${AZURE_LOCATION}
@@ -11,12 +11,18 @@ infra:
       value: 1
     - name: containerMaxReplicaCount
       value: 1
+    - name: externalDatabaseConnectionString
+      value: ${EXTERNAL_DATABASE_CONNECTION_STRING}
+    - name: zeroclaw_master_key
+      value: ${ZEROCLAW_MASTER_KEY}
+    - name: zeroclaw_salt_key
+      value: ${ZEROCLAW_SALT_KEY}
 
 services:
-  litellm:
-    project: ./src/litellm
+  zeroclaw:
+    project: ./src/zeroclaw
     host: containerapp
-    language: python
+    language: rust
     docker:
       context: ./
       path: DOCKERFILE

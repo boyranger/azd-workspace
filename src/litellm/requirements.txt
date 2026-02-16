@@ -1,4 +1,0 @@
-litellm[proxy]
-prometheus_client
-langfuse
-prisma

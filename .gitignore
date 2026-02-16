@@ -1,3 +1,6 @@
 .azure
 .DS_Store
 
+# Local env file
+.env
+

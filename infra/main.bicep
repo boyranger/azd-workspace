@@ -12,43 +12,48 @@ param location string
 @description('Name of the resource group to create or use')
 param resourceGroupName string 
 
-@description('Port exposed by the LiteLLM container.')
-param containerPort int = 80
+@description('Port exposed by the ZeroClaw container.')
+param containerPort int = 8080
 
-@description('Minimum replica count for LiteLLM containers.')
+@description('Minimum replica count for ZeroClaw containers.')
 param containerMinReplicaCount int = 2
 
-@description('Maximum replica count for LiteLLM containers.')
+@description('Maximum replica count for ZeroClaw containers.')
 param containerMaxReplicaCount int = 3
 
 @description('Name of the PostgreSQL database.')
-param databaseName string = 'litellmdb'
+param databaseName string = 'zeroclawdb'
 
 @description('Name of the PostgreSQL database admin user.')
-param databaseAdminUser string = 'litellmuser'
+param databaseAdminUser string = 'zeroclawuser'
 
-@description('Password for the PostgreSQL database admin user.')
 @secure()
-param databaseAdminPassword string
+param databaseAdminPassword string = ''
 
-param litellmContainerAppExists bool
+param zeroclawContainerAppExists bool
 
-@description('Master key for LiteLLM. Your master key for the proxy server.')
+@description('External database connection string (e.g. Supabase). If provided, the template will use this instead of provisioning Azure PostgreSQL.')
 @secure()
-param litellm_master_key string
+param externalDatabaseConnectionString string = ''
 
-@description('Salt key for LiteLLM. (CAN NOT CHANGE ONCE SET)')
+@description('Master key for ZeroClaw. Your master key for the proxy/gateway.')
 @secure()
-param litellm_salt_key string
+param zeroclaw_master_key string
+
+@description('Salt key for ZeroClaw. (CAN NOT CHANGE ONCE SET)')
+@secure()
+param zeroclaw_salt_key string
+@secure()
+param openai_api_key string = ''
 
 var abbrs = loadJsonContent('./abbreviations.json')
 var resourceToken = toLower(uniqueString(subscription().id, resourceGroupName, environmentName, location))
 var tags = {
   'azd-env-name': environmentName
-  'azd-template': 'https://github.com/Build5Nines/azd-litellm'
+  'azd-template': 'https://github.com/Build5Nines/azd-zeroclaw'
 }
 
-var containerAppName = '${abbrs.appContainerApps}litellm-${resourceToken}'
+var containerAppName = '${abbrs.appContainerApps}zeroclaw-${resourceToken}'
 
 // Organize resources in a resource group
 resource rg 'Microsoft.Resources/resourceGroups@2021-04-01' = {
@@ -62,8 +67,8 @@ module monitoring './shared/monitoring.bicep' = {
   params: {
     location: location
     tags: tags
-    logAnalyticsName: '${abbrs.operationalInsightsWorkspaces}litellm-${resourceToken}'
-    applicationInsightsName: '${abbrs.insightsComponents}litellm-${resourceToken}'
+    logAnalyticsName: '${abbrs.operationalInsightsWorkspaces}zeroclaw-${resourceToken}'
+    applicationInsightsName: '${abbrs.insightsComponents}zeroclaw-${resourceToken}'
   }
   scope: rg
 }
@@ -81,7 +86,7 @@ module containerRegistry './shared/container-registry.bicep' = {
 module appsEnv './shared/apps-env.bicep' = {
   name: 'apps-env'
   params: {
-    name: '${abbrs.appManagedEnvironments}litellm-${resourceToken}'
+    name: '${abbrs.appManagedEnvironments}zeroclaw-${resourceToken}'
     location: location
     tags: tags 
     applicationInsightsName: monitoring.outputs.applicationInsightsName
@@ -91,10 +96,10 @@ module appsEnv './shared/apps-env.bicep' = {
 }
 
 // Deploy PostgreSQL Server via module call.
-module postgresql './shared/postgresql.bicep' = {
+module postgresql './shared/postgresql.bicep' = if (empty(externalDatabaseConnectionString)) {
   name: 'postgresql'
   params: {
-    name: '${abbrs.dBforPostgreSQLServers}litellm-${resourceToken}'
+    name: '${abbrs.dBforPostgreSQLServers}zeroclaw-${resourceToken}'
     location: location
     tags: tags
     databaseAdminUser: databaseAdminUser
@@ -104,10 +109,10 @@ module postgresql './shared/postgresql.bicep' = {
 }
 
 // Deploy PostgreSQL Database via module call.
-module postgresqlDatabase './shared/postgresql_database.bicep' = {
+module postgresqlDatabase './shared/postgresql_database.bicep' = if (empty(externalDatabaseConnectionString)) {
   name: 'postgresqlDatabase'
   params: {
-    serverName: postgresql.outputs.name
+    serverName: empty(externalDatabaseConnectionString) ? postgresql.outputs.name : ''
     databaseName: databaseName
   }
   scope: rg
@@ -116,25 +121,25 @@ module postgresqlDatabase './shared/postgresql_database.bicep' = {
 // module keyvault './shared/keyvault.bicep' = {
 //   name: 'keyvault'
 //   params: {
-//     name: '${abbrs.keyVaultVaults}litellm-${resourceToken}'
+//     name: '${abbrs.keyVaultVaults}zeroclaw-${resourceToken}'
 //     location: location
 //     tags: tags
 //   }
 //   scope: rg
 // }
 
-// Deploy LiteLLM Container App via module call.
-module litellm './app/litellm.bicep' = {
-  name: 'litellm'
+// Deploy ZeroClaw Container App via module call.
+module zeroclaw './app/zeroclaw.bicep' = {
+  name: 'zeroclaw'
   params: {
     name: containerAppName
     containerAppsEnvironmentName: appsEnv.outputs.name
     // keyvaultName: keyvault.outputs.name
-    postgresqlConnectionString: 'postgresql://${databaseAdminUser}:${databaseAdminPassword}@${postgresql.outputs.fqdn}/${databaseName}'
-    litellm_master_key: litellm_master_key
-    litellm_salt_key: litellm_salt_key
-
-    litellmContainerAppExists: litellmContainerAppExists
+    postgresqlConnectionString: !empty(externalDatabaseConnectionString) ? externalDatabaseConnectionString : 'postgresql://${databaseAdminUser}:${databaseAdminPassword}@${postgresql.outputs.fqdn}/${databaseName}'
+    zeroclaw_master_key: zeroclaw_master_key
+    zeroclaw_salt_key: zeroclaw_salt_key
+    openai_api_key: openai_api_key
+    zeroclawContainerAppExists: zeroclawContainerAppExists
 
     containerRegistryName: containerRegistry.outputs.name
     containerPort: containerPort
@@ -146,11 +151,11 @@ module litellm './app/litellm.bicep' = {
 
 
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.outputs.loginServer
-output LITELLM_MASTER_KEY string = litellm_master_key
-output LITELLM_SALT_KEY string = litellm_salt_key
+output ZEROCLAW_MASTER_KEY string = zeroclaw_master_key
+output ZEROCLAW_SALT_KEY string = zeroclaw_salt_key
 
-//output LITELLM_CONTAINER_APP_EXISTS bool = true
-// output LITELLM_CONTAINERAPP_FQDN string = litellm.outputs.containerAppFQDN
+//output ZEROCLAW_CONTAINER_APP_EXISTS bool = true
+// output ZEROCLAW_CONTAINERAPP_FQDN string = zeroclaw.outputs.containerAppFQDN
 // output POSTGRESQL_FQDN string = postgresql.outputs.fqdn
 
 

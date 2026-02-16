@@ -1,79 +1,102 @@
-# azd-litellm ![Awesome Badge](https://awesome.re/badge-flat2.svg)
+# azd-zeroclaw 🚀
 
-An `azd` template to deploy [LiteLLM](https://www.litellm.ai/) running in Azure Container Apps using an Azure PostgreSQL database.
+ZeroClaw — minimal Azure template and examples to run a tiny Rust gateway in Azure Container Instances (ACI) or Container Apps. This repo was migrated from LiteLLM to ZeroClaw.
 
-To use this template, follow these steps using the [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/overview):
+## Recommended (student-friendly): Deploy to Azure Container Instances (ACI) ✅
 
-1. Log in to Azure Developer CLI. This is only required once per-install.
+1) Add Dockerfile (Rust) to `src/zeroclaw/DOCKERFILE` — example below.
 
-    ```bash
-    azd auth login
-    ```
+2) Build & push to Azure Container Registry (ACR):
 
-2. Initialize this template using `azd init`:
+```bash
+# Login Azure
+az login
 
-    ```bash
-    azd init --template build5nines/azd-litellm
-    ```
+# Create resource group
+az group create --name zeroclaw-rg --location southeastasia
 
-3. Use `azd up` to provision your Azure infrastructure and deploy the web application to Azure.
+# Create ACR
+az acr create --resource-group zeroclaw-rg \
+  --name zeroclawacr --sku Basic
 
-    ```bash
-    azd up
-    ```
-
-4. `azd up` will prompt you to enter these additional secret and password parameters used to configure LiteLLM:
-
-    - `databaseAdminPassword`: The Admin password use to connect to the PostgreSQL database.
-    - `litellm_master_key`: The LiteLLM Master Key. This is the LiteLLM proxy admin key.
-    - `litellm_salt_key`: The LiteLLM Salt Key. This cannot be changed once set, and is used to encrypt model keys in the database.
-
-    Be sure to save these secrets and passwords to keep them safe.
-
-5. Once the template has finished provisioning all resources, and Azure Container Apps has completed deploying the LiteLLM container _(this can take a minute or so after `azd up` completes to finish)_, you can access both the Swagger UI and Admin UI for LiteLLM.
-
-    This can be done by navigating to the `litellm` service **Endpoint** returned from the `azd` deployment step using your web browser. _You can also find this endpoint by navigating to the **Container App** within the **Azure Portal** then locating the **Application Url**._
-
-    ![Screenshot of terminal with azd up completed](/assets/screenshot-azd-up-completed.png)
-
-    Navigating to the Endpoint URL will access Swagger UI:
-
-    ![Screenshot of LiteLLM Swagger UI](/assets/screenshot-litellm-swagger-ui.png)
-
-    Navigating to `/ui` on the Endpoint URL will access the LiteLLM Admin UI where Models and other things can be configured:
-
-    ![Screenshot of LiteLLM Admin UI](/assets/screenshot-litellm-admin-ui.png)
-
-## Architecture Diagram
-
-![Diagram of Azure Resources provisioned with this template](assets/architecture.png)
-
-In addition to deploying Azure Resources to host LiteLLM, this template includes a `DOCKERFILE` that builds a LiteLLM docker container that builds the LiteLLM proxy server with Admin UI using Python from the `litellm` pip package.
-
-## Azure Resources
-
-These are the Azure resources that are deployed with this template:
-
-- **Container Apps Environment** - The environment for hosting the Container App
-- **Container App** - The hosting for the [LiteLLM](https://www.litellm.ai) Docker Container
-- **Azure Database for PostgreSQL flexible server** - The PostgreSQL server to host the LiteLLM database
-- **Log Analytics** and **Application Insights** - Logging for the Container Apps Environment
-- **Container Registry** - Used to deploy the custom Docker container for LiteLLM
-
-## How to use Specific Version of LiteLLM
-
-By default, this project uses the latest version of LiteLLM. There may be reasons you want to run a specific version of LiteLLM. This project deploys LiteLLM using its Python package, and you can update the version referenced to target a specific version of LiteLLM if necessary.
-
-To do so, you can edit the [`/src/litellm/requirements.txt`](/src/litellm/requirements.txt) file. This file is the Python `pip` requirements file that specifies the PIP packages and their versions to use. The `litellm[proxy]` package is the package that is LiteLLM. You can find the available release versions on the [`litellm` PIP package page.](https://pypi.org/project/litellm/)
-
-Here's an example of the `requirements.txt` file reference of `litellm` package specifying the v1.65.1 release:
-
-```text
-litellm[proxy]==1.65.1
+# Build and push
+az acr build --registry zeroclawacr --image zeroclaw:latest .
 ```
 
-By default, this project does not specify a version; which tells PIP to pull down the latest release. I hope this helps if you find yourself needing to run a specific version of LiteLLM.
+3) Deploy to ACI (pay-per-second, ultra‑cheap for student credits):
 
-## Author
+```bash
+# Get ACR creds
+ACR_PASSWORD=$(az acr credential show --name zeroclawacr --query "passwords[0].value" -o tsv)
 
-This `azd` template was written by [Chris Pietschmann](https://pietschsoft.com), founder of [Build5Nines](https://build5nines.com), Microsoft MVP, HashiCorp Ambassador, and Microsoft Certified Trainer (MCT).
+# Create container instance
+az container create \
+  --resource-group zeroclaw-rg \
+  --name zeroclaw-gateway \
+  --image zeroclawacr.azurecr.io/zeroclaw:latest \
+  --cpu 0.5 --memory 0.25 \
+  --registry-login-server zeroclawacr.azurecr.io \
+  --registry-username zeroclawacr \
+  --registry-password $ACR_PASSWORD \
+  --dns-name-label zeroclaw-bot \
+  --ports 8080 \
+  --environment-variables ZEROCLAW_API_KEY="sk-..." ZEROCLAW_PROVIDER="openrouter" \
+  --restart-policy Always \
+  --location southeastasia
+```
+
+4) Get FQDN:
+
+```bash
+az container show --resource-group zeroclaw-rg --name zeroclaw-gateway --query ipAddress.fqdn -o tsv
+# example: zeroclaw-bot.southeastasia.azurecontainer.io
+```
+
+---
+
+## Example Dockerfile (Rust) — use `src/zeroclaw/DOCKERFILE`
+
+```dockerfile
+FROM rust:1.75-slim as builder
+
+WORKDIR /build
+COPY . .
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /build/target/release/zeroclaw /usr/local/bin/zeroclaw
+
+WORKDIR /data
+VOLUME /data
+
+EXPOSE 8080
+
+ENTRYPOINT ["zeroclaw"]
+CMD ["gateway", "--host", "0.0.0.0"]
+```
+
+---
+
+## Local development
+
+- Build & run with Docker (repo contains `src/zeroclaw/run_local.sh` and `DOCKERFILE`).
+- Use `DATABASE_URL`, `ZEROCLAW_MASTER_KEY` and `ZEROCLAW_SALT_KEY` for local env when required.
+
+## Scripts
+
+- `scripts/deploy_aci.sh` — build → push → deploy to ACI (example use in README)
+- `scripts/deploy_azure.sh`, `scripts/check_status.sh`, `scripts/maintenance.sh` — updated to use `zeroclaw` and renamed secrets.
+
+## Infra notes
+
+- Bicep modules were renamed to `zeroclaw` and secure parameter names changed to `zeroclaw_master_key` / `zeroclaw_salt_key`.
+
+---
+
+If you want, I can:
+- add CI (GitHub Actions) to build & push to ACR, or
+- update the `azd` template to use ACI or Container Apps with `zeroclaw`.
+
+Choose next step. 🔧

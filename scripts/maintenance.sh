@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # maintenance.sh
-# Maintenance helper for LiteLLM on Azure.
+# Maintenance helper for ZeroClaw on Azure.
 # Subcommands:
 #   rotate-secrets   -- Rotate inline Container App secrets (master, salt, openai)
 #   rotate-kv        -- Rotate secrets in KeyVault (then update Container App to use them)
@@ -11,7 +11,7 @@ set -euo pipefail
 #   db-backup        -- Run pg_dump backup using DATABASE_URL from KeyVault
 # Usage examples:
 #  ./scripts/maintenance.sh rotate-secrets -g RG -a APP --master NEWMASTER --salt NEWSALT --openai NEWOPENAI
-#  ./scripts/maintenance.sh update-image -g RG -a APP -t v1.2.3 -r myregistry.azurecr.io/litellm
+#  ./scripts/maintenance.sh update-image -g RG -a APP -t v1.2.3 -r myregistry.azurecr.io/zeroclaw
 #  ./scripts/maintenance.sh scale -g RG -a APP --min 2 --max 4
 #  ./scripts/maintenance.sh db-backup -g RG -v MYKV -d DATABASE_URL -o ./backups
 
@@ -50,14 +50,14 @@ case "$subcommand" in
     : "${RG:?Parameter -g required}"; : "${APP:?Parameter -a required}"
 
     if [ -n "$MASTER" ]; then
-      echo "Updating secret litellm-master-key on Container App $APP"
-      az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[?name=='litellm-master-key'].value="$MASTER" || \
-        az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[0].name='litellm-master-key' properties.configuration.secrets[0].value="$MASTER"
+      echo "Updating secret zeroclaw-master-key on Container App $APP"
+      az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[?name=='zeroclaw-master-key'].value="$MASTER" || \
+        az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[0].name='zeroclaw-master-key' properties.configuration.secrets[0].value="$MASTER"
     fi
     if [ -n "$SALT" ]; then
-      echo "Updating secret litellm-salt-key on Container App $APP"
-      az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[?name=='litellm-salt-key'].value="$SALT" || \
-        az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[1].name='litellm-salt-key' properties.configuration.secrets[1].value="$SALT"
+      echo "Updating secret zeroclaw-salt-key on Container App $APP"
+      az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[?name=='zeroclaw-salt-key'].value="$SALT" || \
+        az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[1].name='zeroclaw-salt-key' properties.configuration.secrets[1].value="$SALT"
     fi
     if [ -n "$OPENAI" ]; then
       echo "Updating secret openai-api-key on Container App $APP"
@@ -85,14 +85,14 @@ case "$subcommand" in
     : "${RG:?Parameter -g required}"; : "${APP:?Parameter -a required}"; : "${VAULT:?Parameter -v required}"
 
     if [ -n "$NEW_MASTER" ]; then
-      az keyvault secret set --vault-name "$VAULT" --name LITELLM_MASTER_KEY --value "$NEW_MASTER"
-      echo "Updated KeyVault secret LITELLM_MASTER_KEY"
-      az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[?name=='litellm-master-key'].value="$NEW_MASTER" || true
+      az keyvault secret set --vault-name "$VAULT" --name ZEROCLAW_MASTER_KEY --value "$NEW_MASTER"
+      echo "Updated KeyVault secret ZEROCLAW_MASTER_KEY"
+      az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[?name=='zeroclaw-master-key'].value="$NEW_MASTER" || true
     fi
     if [ -n "$NEW_SALT" ]; then
-      az keyvault secret set --vault-name "$VAULT" --name LITELLM_SALT_KEY --value "$NEW_SALT"
-      echo "Updated KeyVault secret LITELLM_SALT_KEY"
-      az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[?name=='litellm-salt-key'].value="$NEW_SALT" || true
+      az keyvault secret set --vault-name "$VAULT" --name ZEROCLAW_SALT_KEY --value "$NEW_SALT"
+      echo "Updated KeyVault secret ZEROCLAW_SALT_KEY"
+      az containerapp update -g "$RG" -n "$APP" --set properties.configuration.secrets[?name=='zeroclaw-salt-key'].value="$NEW_SALT" || true
     fi
     if [ -n "$NEW_OPENAI" ]; then
       az keyvault secret set --vault-name "$VAULT" --name OPENAI_API_KEY --value "$NEW_OPENAI"
@@ -122,7 +122,7 @@ case "$subcommand" in
       # try to determine ACR from deployment outputs
       ACR_LOGIN=$(az deployment sub list --query "[0].properties.outputs.AZURE_CONTAINER_REGISTRY_ENDPOINT.value" -o tsv || true)
       ACR_NAME=$(echo "$ACR_LOGIN" | cut -d'.' -f1)
-      IMAGE="$ACR_LOGIN/litellm:$TAG"
+      IMAGE="$ACR_LOGIN/zeroclaw:$TAG"
     else
       echo "Provide --tag and optionally --registry"; exit 1
     fi
@@ -177,7 +177,7 @@ case "$subcommand" in
       exit 2
     fi
     TIMESTAMP=$(date -u +%Y%m%dT%H%M%SZ)
-    OUTFILE="$OUT_DIR/litellm-db-backup-$TIMESTAMP.dump"
+    OUTFILE="$OUT_DIR/zeroclaw-db-backup-$TIMESTAMP.dump"
     echo "Running pg_dump to $OUTFILE"
     pg_dump "$DBURL" -Fc -f "$OUTFILE"
     echo "✅ DB backup completed: $OUTFILE"

@@ -1,0 +1,15 @@
+services:
+  zeroclaw:
+    build:
+      context: ./src/zeroclaw
+      dockerfile: DOCKERFILE
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+
+
+volumes:
+  db_data:
+    name: azd_zeroclaw_db_data
