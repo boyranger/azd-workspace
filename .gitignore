@@ -3,6 +3,10 @@
 
 # Local env file
 .env
+.azure-sandbox
 
 # Rust build artifacts
 src/zeroclaw/target/
+apps/dashboard/node_modules/
+apps/dashboard/.next/
+archives
