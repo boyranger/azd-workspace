@@ -21,3 +21,11 @@ Timer-triggered Azure Function (every minute) that:
 - `MQTT_CA_CERT_PATH` (for trusted CA file on runtime)
 - `MQTT_INGEST_WINDOW_SECONDS` (default `20`)
 - `SUPABASE_TELEMETRY_TABLE` (default `telemetry`)
+- `DB_MAX_RETRIES` (default `3`)
+- `DB_RETRY_BASE_SECONDS` (default `1`, exponential backoff)
+
+## Reliability Behavior
+
+- Batch-level dedup in memory by deterministic `dedup_key` (SHA-256).
+- DB-level dedup via unique index `dedup_key` + `ON CONFLICT DO NOTHING`.
+- DB write retries with exponential backoff for transient `psycopg` errors.

@@ -21,10 +21,10 @@ Dokumen ini jadi baseline plan untuk sesi lanjutan setelah status saat ini:
 
 ## Scope Lanjutan (Belum Dikerjakan)
 
-1. Security hardening network dan VM.
-2. Hardening MQTT auth/TLS.
-3. Hardening aplikasi ingest (resilience + observability).
-4. Operasional runbook dan rollback plan.
+1. Sinkronisasi credential dashboard -> broker MQTT realtime.
+2. Hardening aplikasi ingest (resilience + observability).
+3. Dashboard Sprint 2 (user management, ingest monitor, alerts).
+4. Operasional runbook dan observability lanjutan.
 
 ## Prioritas Eksekusi
 
@@ -41,6 +41,8 @@ Definition of done:
 - Tidak ada inbound publik ke port `1883`.
 - Device masih bisa connect via `8883`.
 
+Status: ✅ Selesai (18 Februari 2026)
+
 ### Phase 2 - TLS/Identity Improvement
 
 1. Ganti sertifikat self-signed dengan cert CA valid.
@@ -50,6 +52,8 @@ Definition of done:
 Definition of done:
 - Koneksi MQTT TLS tervalidasi tanpa `--insecure`.
 - Akses topic lintas tenant ditolak oleh ACL.
+
+Status: ⏳ TLS CA valid sudah selesai, ACL tenant-device belum.
 
 ### Phase 3 - Function Ingest Reliability
 
@@ -116,7 +120,9 @@ az network nsg rule list -g MyLowCostVM_group --nsg-name zeroclaw-b1s-nsg -o tab
 
 ## Checklist Sesi Berikutnya
 
-- [ ] Konfirmasi IP admin yang akan di-allow untuk SSH.
-- [ ] Eksekusi hardening Phase 1 penuh.
-- [ ] Validasi E2E setelah hardening.
-- [ ] Commit perubahan script/doc jika diperlukan.
+- [ ] Implement sinkronisasi create/rotate device credential ke Mosquitto broker.
+- [x] Implement `/admin/users` + role management owner-only.
+- [x] Implement `/admin/ingest` dashboard.
+- [x] Implement `/admin/alerts` CRUD (rules tenant).
+- [x] Implement manual alert evaluation -> `alert_events`.
+- [x] Tambah retry/dedup pada function ingest.

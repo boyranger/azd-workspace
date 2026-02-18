@@ -1,0 +1,3 @@
+CMD-LOG-LINE-BEGIN 968720 | 2026-02-18 16:54:38,767 | INFO | az_command_data_logger | command args: functionapp function list -g {} -n {} --query {} -o {}
+CMD-LOG-LINE-BEGIN 968720 | 2026-02-18 16:54:39,338 | ERROR | az_command_data_logger | Please run 'az login' to setup account.
+CMD-LOG-LINE-BEGIN 968720 | 2026-02-18 16:54:39,338 | INFO | az_command_data_logger | exit code: 1

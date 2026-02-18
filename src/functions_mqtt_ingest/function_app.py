@@ -1,4 +1,5 @@
 import datetime as dt
+import hashlib
 import json
 import logging
 import os
@@ -92,6 +93,30 @@ def _collect_mqtt_messages() -> List[Dict[str, Any]]:
     return messages
 
 
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value.strip())
+    except Exception:
+        return default
+
+
+def _dedup_key_for_record(record: Dict[str, Any]) -> str:
+    payload_text = str(record.get("payload", ""))
+    raw = "|".join(
+        [
+            str(record.get("received_at", "")),
+            str(record.get("topic", "")),
+            payload_text,
+            str(int(record.get("qos", 0))),
+            "1" if bool(record.get("retain", False)) else "0",
+        ]
+    )
+    return hashlib.sha256(raw.encode("utf-8", errors="replace")).hexdigest()
+
+
 def _send_to_supabase(records: List[Dict[str, Any]]) -> None:
     if not records:
         return
@@ -103,6 +128,9 @@ def _send_to_supabase(records: List[Dict[str, Any]]) -> None:
     if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", table_name):
         raise ValueError("SUPABASE_TELEMETRY_TABLE has invalid format")
 
+    max_retries = max(_env_int("DB_MAX_RETRIES", 3), 1)
+    base_delay = max(_env_int("DB_RETRY_BASE_SECONDS", 1), 1)
+
     create_stmt = sql.SQL(
         """
         create table if not exists {} (
@@ -113,20 +141,43 @@ def _send_to_supabase(records: List[Dict[str, Any]]) -> None:
           payload_json jsonb null,
           qos int not null default 0,
           retain boolean not null default false,
+          dedup_key text null,
           ingested_at timestamptz not null default now()
         )
         """
     ).format(sql.Identifier(table_name))
 
+    alter_stmt = sql.SQL(
+        """
+        alter table {}
+        add column if not exists dedup_key text null
+        """
+    ).format(sql.Identifier(table_name))
+
+    dedup_idx_stmt = sql.SQL(
+        """
+        create unique index if not exists {} on {} (dedup_key)
+        """
+    ).format(
+        sql.Identifier(f"{table_name}_dedup_key_uq"),
+        sql.Identifier(table_name),
+    )
+
     insert_stmt = sql.SQL(
         """
-        insert into {} (received_at, topic, payload_text, payload_json, qos, retain)
-        values (%s, %s, %s, %s::jsonb, %s, %s)
+        insert into {} (received_at, topic, payload_text, payload_json, qos, retain, dedup_key)
+        values (%s, %s, %s, %s::jsonb, %s, %s, %s)
+        on conflict (dedup_key) do nothing
         """
     ).format(sql.Identifier(table_name))
 
     rows = []
+    dedup_seen = set()
     for record in records:
+        dedup_key = _dedup_key_for_record(record)
+        if dedup_key in dedup_seen:
+            continue
+        dedup_seen.add(dedup_key)
         payload_text = str(record.get("payload", ""))
         try:
             payload_json = json.dumps(json.loads(payload_text), ensure_ascii=True)
@@ -140,14 +191,47 @@ def _send_to_supabase(records: List[Dict[str, Any]]) -> None:
                 payload_json,
                 int(record.get("qos", 0)),
                 bool(record.get("retain", False)),
+                dedup_key,
             )
         )
 
-    with psycopg.connect(database_url) as conn:
-        with conn.cursor() as cur:
-            cur.execute(create_stmt)
-            cur.executemany(insert_stmt, rows)
-        conn.commit()
+    if not rows:
+        logging.info("mqtt_ingest: no unique rows to insert after batch dedup")
+        return
+
+    last_error: Exception | None = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            with psycopg.connect(database_url, connect_timeout=10) as conn:
+                with conn.cursor() as cur:
+                    cur.execute(create_stmt)
+                    cur.execute(alter_stmt)
+                    cur.execute(dedup_idx_stmt)
+                    cur.executemany(insert_stmt, rows)
+                conn.commit()
+            logging.info(
+                "mqtt_ingest: DB write success attempt=%s batch_rows=%s unique_rows=%s",
+                attempt,
+                len(records),
+                len(rows),
+            )
+            return
+        except psycopg.Error as ex:
+            last_error = ex
+            if attempt >= max_retries:
+                break
+            sleep_seconds = base_delay * (2 ** (attempt - 1))
+            logging.warning(
+                "mqtt_ingest: DB write failed attempt=%s/%s (%s). retry in %ss",
+                attempt,
+                max_retries,
+                ex.__class__.__name__,
+                sleep_seconds,
+            )
+            time.sleep(sleep_seconds)
+
+    if last_error is not None:
+        raise last_error
 
 
 @app.timer_trigger(schedule="0 */1 * * * *", arg_name="timer", run_on_startup=False, use_monitor=False)

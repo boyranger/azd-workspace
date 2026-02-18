@@ -1,5 +1,20 @@
 # Blueprint Panel Admin dan User FE
 
+## Status Implementasi (18 Februari 2026)
+
+- Sprint 1 sudah diimplementasikan di `apps/dashboard/`.
+- Auth menggunakan Supabase email/password (`/login`) + SSR session middleware.
+- Route guard aktif:
+  - `/app/*` minimal role `viewer`
+  - `/admin/*` minimal role `staff`
+- API admin devices sudah aktif:
+  - `POST /api/admin/devices` (staff+)
+  - `POST /api/admin/devices/:id/rotate` (owner only)
+- User management owner-only sudah aktif:
+  - `/admin/users`
+  - `PATCH /api/admin/users/:id/role`
+- Logout flow aktif di layout admin/tenant.
+
 ## 1. Target Arsitektur Aplikasi
 
 Gunakan satu codebase Next.js (App Router), dipisah jadi dua area:
@@ -236,11 +251,18 @@ Guard:
 2. Export telemetry CSV.
 3. Audit trail untuk aksi admin sensitif.
 
-## 8. Checklist Siap Mulai Coding
+## 8. Checklist Sprint 1
 
-- [ ] Putuskan provider auth final (Supabase Auth).
-- [ ] Konfirmasi naming final tabel (`telemetry` sudah dipakai ingest saat ini).
-- [ ] Buat migration SQL awal + RLS.
-- [ ] Scaffold route kosong sesuai struktur folder.
-- [ ] Implement middleware role guard.
-- [ ] Implement minimal 2 halaman: `/admin/devices` dan `/app/devices`.
+- [x] Provider auth final: Supabase Auth.
+- [x] Konfirmasi naming tabel awal (`telemetry` dipakai ingest).
+- [x] Migration SQL awal + RLS baseline dibuat.
+- [x] Scaffold route `/admin` dan `/app` dibuat.
+- [x] Middleware role guard aktif.
+- [x] Implement `/admin/devices` dan `/app/devices`.
+
+## 9. Next Focus (Sprint 2)
+
+- [ ] Sinkronisasi credential create/rotate ke broker Mosquitto realtime.
+- [x] Tambah `/admin/users` untuk role management.
+- [x] Tambah `/admin/ingest` untuk health/last-run/error summary.
+- [x] Tambah CRUD alerts (`alerts`, `alert_events`).

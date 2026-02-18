@@ -1,0 +1,8 @@
+968873 : 2026-02-18 16:54:39,511 : INFO : telemetry.main : Attempt start. Configuration directory [/home/far/azd-litellm/.azure-sandbox]. Cache directory [/home/far/azd-litellm/.azure-sandbox/telemetry/20260218165439385].
+968873 : 2026-02-18 16:54:39,512 : INFO : telemetry.records : 1 cache files to upload.
+968873 : 2026-02-18 16:54:39,512 : INFO : telemetry.records : Processed file /home/far/azd-litellm/.azure-sandbox/telemetry/20260218165439385/cache into 1 records.
+968873 : 2026-02-18 16:54:39,512 : INFO : telemetry.records : Remove directory /home/far/azd-litellm/.azure-sandbox/telemetry/20260218165439385
+968873 : 2026-02-18 16:54:39,513 : INFO : telemetry.client : Accumulated 1 events. Flush the clients.
+968873 : 2026-02-18 16:54:39,513 : INFO : telemetry.client : Flush client c4395b75-49cc-422c-bc95-c7d51aef5d46.
+968873 : 2026-02-18 16:54:39,575 : ERROR : telemetry.sender : Upload failed. OSError: <urlopen error [Errno -3] Temporary failure in name resolution>
+968873 : 2026-02-18 16:54:39,575 : INFO : telemetry.sender : Finish uploading in 0.062119 seconds.

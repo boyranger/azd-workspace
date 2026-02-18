@@ -123,3 +123,69 @@ Data growth spike:
 - Backend live di Azure VM + Function App.
 - Ingest aktif: MQTT -> Azure Function `mqtt_ingest` -> Supabase PostgreSQL (`public.telemetry`).
 - Blob archive saat ini dinonaktifkan (container `archive` dihapus).
+
+## 9) Dashboard operations (Admin + User FE)
+
+Lokasi dashboard:
+- `apps/dashboard`
+- `docs/onboarding-dashboard-5min.md` (onboarding user baru)
+
+### A. Local run
+
+```bash
+cd apps/dashboard
+npm install
+npm run dev
+```
+
+Wajib env di `apps/dashboard/.env.local`:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+### B. Auth flow
+
+- Login melalui `/login` (Supabase email/password).
+- Middleware menjaga session untuk route:
+  - `/app/*` (minimal role `viewer`)
+  - `/admin/*` (minimal role `staff`)
+- Role dibaca dari tabel `public.profiles`.
+
+### C. Seed minimal user-role (manual SQL)
+
+1. Buat user di Supabase Auth (Dashboard Supabase).
+2. Pastikan ada tenant:
+```sql
+insert into public.tenants (name) values ('Tenant Demo') returning id;
+```
+3. Mapping user auth ke profile:
+```sql
+insert into public.profiles (id, tenant_id, role, full_name)
+values ('<AUTH_USER_UUID>', '<TENANT_UUID>', 'owner', 'Admin Demo');
+```
+
+### D. API admin yang aktif
+
+- `POST /api/admin/devices`:
+  - role `staff+`
+  - create device + generate credential MQTT (ditampilkan sekali).
+- `POST /api/admin/devices/:id/rotate`:
+  - role `owner` only
+  - rotate credential device.
+
+### E. Troubleshooting cepat
+
+1. Error `Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Cek `apps/dashboard/.env.local` sudah terisi.
+- Restart dev server setelah ubah env.
+
+2. Error `cookieStore.get is not a function`
+- Pastikan pakai versi terbaru kode helper Supabase server (`apps/dashboard/src/lib/supabase/server.ts`) yang sudah async cookie store.
+- Restart server setelah pull/update.
+
+3. Login berhasil tapi redirect ke `/unauthorized`
+- Cek row user di `public.profiles` ada.
+- Cek `tenant_id` valid dan `role` sesuai (`owner|staff|viewer`).
+
+4. Admin lupa password
+- Reset di Supabase Auth dashboard, atau
+- login sebagai user tersebut lalu ubah password di `/app/profile`.
