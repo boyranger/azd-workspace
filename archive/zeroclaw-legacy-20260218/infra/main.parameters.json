@@ -1,0 +1,33 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "zeroclawContainerAppExists": {
+      "value": "${ZEROCLAW_CONTAINER_APP_EXISTS=false}"
+    },
+    "useSqlite": {
+      "value": true
+    },
+    "sqliteDatabaseUrl": {
+      "value": "sqlite:///data/zeroclaw.db"
+    },
+    "externalDatabaseConnectionString": {
+      "value": "${EXTERNAL_DATABASE_CONNECTION_STRING}"
+    },
+    "zeroclaw_master_key": {
+      "value": "${ZEROCLAW_MASTER_KEY}"
+    },
+    "zeroclaw_salt_key": {
+      "value": "${ZEROCLAW_SALT_KEY}"
+    },
+    "openai_api_key": {
+      "value": "${OPENAI_API_KEY}"
+    }
+  }
+}

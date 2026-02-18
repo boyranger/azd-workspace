@@ -4,3 +4,5 @@
 # Local env file
 .env
 
+# Rust build artifacts
+src/zeroclaw/target/
