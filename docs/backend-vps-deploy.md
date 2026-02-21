@@ -79,3 +79,43 @@ Script menampilkan:
 - kredensial MQTT awal
 
 Simpan kredensial MQTT output deploy ke secret manager secepatnya.
+
+## Post-deploy hardening broker (transitional model)
+
+Saat firmware belum tenant-based, gunakan isolasi credential per-device.
+
+1. Hapus ACL global dari `/etc/mosquitto/acl`:
+```conf
+user admin
+topic readwrite #
+```
+
+2. Buat user unik per-device:
+```bash
+sudo mosquitto_passwd /etc/mosquitto/passwd <device-id>
+```
+
+3. Tambahkan ACL per-device:
+```conf
+user <device-id>
+topic write devices/<device-id>/#
+topic write device/<device-id>/#
+```
+
+4. Restart dan validasi broker:
+```bash
+sudo systemctl restart mosquitto
+sudo systemctl is-active mosquitto
+```
+
+5. Verifikasi user broker (tanpa hash):
+```bash
+sudo cut -d: -f1 /etc/mosquitto/passwd
+```
+
+Catatan permission file:
+- Untuk environment saat ini, gunakan:
+```bash
+sudo chown root:mosquitto /etc/mosquitto/passwd /etc/mosquitto/acl
+sudo chmod 640 /etc/mosquitto/passwd /etc/mosquitto/acl
+```

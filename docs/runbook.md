@@ -82,6 +82,36 @@ Hardening minimum:
 - [ ] fail2ban/ufw sesuai kebutuhan
 - [ ] log rotation aktif
 
+### Broker hardening transitional (aktif)
+
+Status per 21 Februari 2026:
+- ACL global `user admin` + `topic readwrite #` sudah dihapus.
+- Model sementara: credential per-device + ACL write per-device.
+- Contoh user device yang sudah diterapkan: `device-123`.
+
+Langkah standar untuk tambah device baru:
+```bash
+sudo mosquitto_passwd /etc/mosquitto/passwd <device-id>
+```
+
+Tambahkan ACL device ke `/etc/mosquitto/acl`:
+```conf
+user <device-id>
+topic write devices/<device-id>/#
+topic write device/<device-id>/#
+```
+
+Restart broker:
+```bash
+sudo systemctl restart mosquitto
+sudo systemctl is-active mosquitto
+```
+
+Catatan permission file Mosquitto:
+- Gunakan owner/group: `root:mosquitto`
+- Mode file: `640`
+- Jika diubah ke `root:root`, service bisa gagal start (exit status 13 pada environment saat ini).
+
 ## 4) Data and app setup
 
 Supabase:
@@ -153,6 +183,7 @@ Data growth spike:
 - Backend live di Azure VM + Function App.
 - Ingest aktif: MQTT -> Azure Function `mqtt_ingest` -> Supabase PostgreSQL (`public.telemetry`).
 - Blob archive tidak digunakan pada fase aktif saat ini.
+- Broker hardening phase 1 aktif: ACL per-device dan credential per-device (tanpa ACL global).
 
 ## 9) Dashboard operations (Admin + User FE)
 
