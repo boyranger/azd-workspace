@@ -261,3 +261,26 @@ getent hosts aws-1-ap-southeast-1.pooler.supabase.com
 timeout 5 bash -lc '</dev/tcp/aws-1-ap-southeast-1.pooler.supabase.com/5432' && echo OK
 ```
 - Jika gagal: perbaiki rule egress NSG/firewall dan DNS resolver pada runtime worker.
+
+6. Broker gagal start setelah update ACL/passwd (`Unable to open pwfile`, exit status 13)
+- Gejala:
+  - `systemctl status mosquitto` menunjukkan `status=13`
+  - log berisi `Error: Unable to open pwfile "/etc/mosquitto/passwd"`
+- Recovery:
+```bash
+sudo chown root:mosquitto /etc/mosquitto/passwd /etc/mosquitto/acl
+sudo chmod 640 /etc/mosquitto/passwd /etc/mosquitto/acl
+sudo systemctl reset-failed mosquitto
+sudo systemctl restart mosquitto
+sudo systemctl is-active mosquitto
+```
+
+7. Test publish lokal TLS gagal (`Unable to connect (A TLS error occurred.)`)
+- Penyebab umum:
+  - mismatch hostname/certificate saat konek ke `127.0.0.1:8883`
+  - parameter TLS client tidak cocok.
+- Opsi aman untuk verifikasi cepat publish:
+```bash
+sudo mosquitto_pub -h 127.0.0.1 -p 1883 -u <device-id> -P '<password>' -t devices/<device-id>/telemetry -m '{"ping":"ok"}'
+```
+- Jika wajib test TLS, pakai hostname yang sesuai cert CN/SAN dan CA yang benar.

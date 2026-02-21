@@ -11,7 +11,7 @@ Timer-triggered Azure Function (every minute) that:
 - `MQTT_BROKER_PORT` (default `8883`)
 - `MQTT_BROKER_USERNAME`
 - `MQTT_BROKER_PASSWORD`
-- `MQTT_TOPIC_FILTER` (default `#`)
+- `MQTT_TOPIC_FILTER` (default `devices/+/telemetry`)
 - `DATABASE_URL` (Prisma standard)
 
 Compatibility note:
@@ -26,6 +26,10 @@ Compatibility note:
 - `SUPABASE_TELEMETRY_TABLE` (default `telemetry`)
 - `DB_MAX_RETRIES` (default `3`)
 - `DB_RETRY_BASE_SECONDS` (default `1`, exponential backoff)
+
+Topic filter recommendation:
+- Transitional secure model (current default): `devices/+/telemetry`
+- If topic already tenant-based: `tenant/+/device/+/telemetry`
 
 ## Reliability Behavior
 

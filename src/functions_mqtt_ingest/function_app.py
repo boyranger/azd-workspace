@@ -30,7 +30,7 @@ def _collect_mqtt_messages() -> List[Dict[str, Any]]:
     port = int(os.getenv("MQTT_BROKER_PORT", "8883"))
     username = os.getenv("MQTT_BROKER_USERNAME", "")
     password = os.getenv("MQTT_BROKER_PASSWORD", "")
-    topic = os.getenv("MQTT_TOPIC_FILTER", "#")
+    topic = os.getenv("MQTT_TOPIC_FILTER", "devices/+/telemetry")
     client_id = f"azfunc-ingest-{uuid.uuid4().hex[:12]}"
     window_seconds = int(os.getenv("MQTT_INGEST_WINDOW_SECONDS", "20"))
     use_tls = _env_bool("MQTT_USE_TLS", True)
@@ -47,6 +47,7 @@ def _collect_mqtt_messages() -> List[Dict[str, Any]]:
     def on_connect(client: mqtt.Client, _userdata: Any, _flags: Dict[str, Any], rc: int, _props: Any = None) -> None:
         if rc == 0:
             connected.set()
+            logging.info("MQTT subscribed topic filter: %s", topic)
             client.subscribe(topic)
         else:
             logging.error("MQTT connect failed rc=%s", rc)

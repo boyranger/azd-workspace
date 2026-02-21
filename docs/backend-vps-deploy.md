@@ -119,3 +119,26 @@ Catatan permission file:
 sudo chown root:mosquitto /etc/mosquitto/passwd /etc/mosquitto/acl
 sudo chmod 640 /etc/mosquitto/passwd /etc/mosquitto/acl
 ```
+
+## Troubleshooting hardening
+
+1. `systemctl restart mosquitto` gagal setelah edit ACL/passwd
+- Cek:
+```bash
+sudo systemctl status mosquitto --no-pager -n 50
+sudo journalctl -xeu mosquitto.service --no-pager -n 80
+```
+- Jika ada `Unable to open pwfile "/etc/mosquitto/passwd"`:
+```bash
+sudo chown root:mosquitto /etc/mosquitto/passwd /etc/mosquitto/acl
+sudo chmod 640 /etc/mosquitto/passwd /etc/mosquitto/acl
+sudo systemctl reset-failed mosquitto
+sudo systemctl restart mosquitto
+```
+
+2. `mosquitto_pub` TLS lokal error `A TLS error occurred`
+- Untuk smoke test publish, gunakan listener lokal non-TLS:
+```bash
+sudo mosquitto_pub -h 127.0.0.1 -p 1883 -u <device-id> -P '<password>' -t devices/<device-id>/telemetry -m '{"ping":"ok"}'
+```
+- Untuk test TLS, pastikan hostname sesuai cert CN/SAN dan CA path valid.
