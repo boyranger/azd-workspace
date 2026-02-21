@@ -6,32 +6,28 @@ Arsitektur MVP untuk SaaS IoT/AI yang hemat budget, dengan target UMKM/SME.
 
 ## Target stack
 
-- Frontend: Cloudflare Pages, Next.js 14 App Router, static-first.
+- Frontend: Next.js App Router (`apps/dashboard`).
 - Backend core:
   - Azure VM Ubuntu Server 24 (`Standard_B1s`) untuk MQTT broker (Mosquitto).
-  - Azure Functions (Consumption) untuk ingest, rule, dan processing.
-  - Azure IoT Hub Free tier untuk device management dasar.
+  - Azure Functions (Consumption) untuk ingest MQTT.
 - Data:
-  - Supabase (Auth + PostgreSQL) untuk auth, tenant, metadata, dan telemetry utama.
-  - Azure Blob Storage untuk cold archive (>30 hari) bersifat opsional (fase berikutnya).
+  - Supabase (Auth + PostgreSQL) untuk auth, tenant, metadata, telemetry, dan alert/event.
 - API strategy:
-  - Utama: API di Azure Functions.
-  - Opsional: API terpisah hanya jika dibutuhkan (hindari biaya tetap tambahan di awal).
+  - Dashboard API route di Next.js untuk admin/user operations.
+  - Function App fokus untuk ingest pipeline.
 
 ## Logical flow
 
 ```text
-Device -> MQTT Broker (VM) -> Processor (Functions)
+Device -> MQTT Broker (VM) -> Azure Function mqtt_ingest
        -> Supabase PostgreSQL (telemetry utama)
-       -> Blob (cold archive, optional)
-       -> API -> Dashboard (Cloudflare Pages)
+       -> Dashboard API/UI (Next.js)
 ```
 
 ## Design principles
 
 - Single-VM first: mulai dari 1 VM untuk menekan burn rate.
-- Static-first frontend: minimalkan compute runtime frontend.
-- Hot/cold split storage: query cepat tetap murah, data lama dipindah ke arsip.
+- Single frontend app: admin panel + user FE di satu codebase.
 - Scale by proof: upgrade resource hanya saat metrik bottleneck jelas.
 
 ## Current implementation snapshot (18 Februari 2026)
@@ -39,7 +35,7 @@ Device -> MQTT Broker (VM) -> Processor (Functions)
 - MQTT broker aktif di Azure VM `Standard_B1s`.
 - Azure Function `mqtt_ingest` ingest langsung dari MQTT ke Supabase PostgreSQL.
 - Tabel telemetry aktif: `public.telemetry`.
-- Blob archive saat ini dinonaktifkan; ingest utama hanya ke Supabase PostgreSQL.
+- Fitur dashboard aktif: `/admin/devices`, `/admin/users`, `/admin/ingest`, `/admin/alerts`.
 
 ## Multi-tenant baseline
 
@@ -54,8 +50,7 @@ Device -> MQTT Broker (VM) -> Processor (Functions)
 - Phase B: pilot 5-20 tenant, hardening auth dan observability.
 - Phase C: scale:
   - upgrade VM ke `B2s` saat CPU/RAM bottleneck,
-  - pecah worker ingest jika throughput naik,
-  - evaluasi API gateway bila policy/rate-limit makin kompleks.
+  - pecah worker ingest jika throughput naik.
 
 ## Risks and mitigations
 

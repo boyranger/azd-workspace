@@ -4,9 +4,23 @@
 # Local env file
 .env
 .azure-sandbox
+.env.*
+!.env.example
 
 # Rust build artifacts
 src/zeroclaw/target/
 apps/dashboard/node_modules/
 apps/dashboard/.next/
-archives
+src/functions_mqtt_ingest/__pycache__/
+
+# Worker local/build artifacts
+worker/node_modules/
+worker/dist/
+worker/.env
+worker/.env.*
+!worker/.env.example
+worker/*.log
+
+# Local archives and binary assets
+archives/
+*.tar.gz

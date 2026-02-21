@@ -27,7 +27,7 @@ Alasan:
 - Isolasi permission cukup di middleware + server action guard.
 - Deploy tetap sederhana (single frontend project).
 
-## 2. Struktur Folder (Next.js 14)
+## 2. Struktur Folder (Next.js App Router)
 
 ```text
 src/

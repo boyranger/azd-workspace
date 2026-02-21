@@ -12,7 +12,10 @@ Timer-triggered Azure Function (every minute) that:
 - `MQTT_BROKER_USERNAME`
 - `MQTT_BROKER_PASSWORD`
 - `MQTT_TOPIC_FILTER` (default `#`)
-- `EXTERNAL_DATABASE_CONNECTION_STRING`
+- `DATABASE_URL` (Prisma standard)
+
+Compatibility note:
+- Legacy `EXTERNAL_DATABASE_CONNECTION_STRING` is still accepted as fallback.
 
 ## Optional App Settings
 

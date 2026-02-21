@@ -121,10 +121,11 @@ def _send_to_supabase(records: List[Dict[str, Any]]) -> None:
     if not records:
         return
 
-    database_url = os.getenv("EXTERNAL_DATABASE_CONNECTION_STRING", "")
+    # Prefer Prisma-compatible env name, keep legacy fallback for backward compatibility.
+    database_url = os.getenv("DATABASE_URL", "") or os.getenv("EXTERNAL_DATABASE_CONNECTION_STRING", "")
     table_name = os.getenv("SUPABASE_TELEMETRY_TABLE", "telemetry")
     if not database_url:
-        raise ValueError("EXTERNAL_DATABASE_CONNECTION_STRING is required")
+        raise ValueError("DATABASE_URL is required (or EXTERNAL_DATABASE_CONNECTION_STRING for legacy config)")
     if not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", table_name):
         raise ValueError("SUPABASE_TELEMETRY_TABLE has invalid format")
 

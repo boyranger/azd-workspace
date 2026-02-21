@@ -22,8 +22,7 @@
 - + disk/IP/egress dasar: total realistis `~$13-$18/bulan`.
 - Optimasi:
   - Supabase Free,
-  - Azure Functions Consumption (usage rendah),
-  - IoT Hub Free tier.
+  - Azure Functions Consumption (usage rendah).
 
 ### Month 14+ (scale awal)
 
@@ -48,8 +47,7 @@
 - Budget alert Azure aktif dari hari pertama.
 - Quota per tenant untuk message dan token.
 - Retention policy:
-  - telemetry utama di Supabase PostgreSQL,
-  - cold archive ke Blob hanya jika volume sudah menuntut.
+  - telemetry utama di Supabase PostgreSQL.
 - Scale trigger:
   - CPU VM konsisten tinggi,
   - queue lag bertambah,
@@ -60,4 +58,4 @@
 
 - Nilai di dokumen ini bukan invoice final, tapi baseline perencanaan.
 - Perubahan region/SKU akan mengubah harga.
-- Status implementasi per 18 Februari 2026: ingest aktif langsung ke Supabase PostgreSQL; Blob archive sedang dinonaktifkan.
+- Status implementasi per 18 Februari 2026: ingest aktif langsung ke Supabase PostgreSQL.

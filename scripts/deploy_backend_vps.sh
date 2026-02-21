@@ -32,9 +32,9 @@ if ! command -v az >/dev/null 2>&1; then
   exit 2
 fi
 
-RG_NAME=${RG_NAME:-zeroclaw-vm-rg-ea}
+RG_NAME=${RG_NAME:-mqtt-saas-vm-rg-ea}
 LOCATION=${LOCATION:-eastasia}
-VM_NAME=${VM_NAME:-zeroclaw-b1s}
+VM_NAME=${VM_NAME:-mqtt-saas-b1s}
 VM_SIZE=${VM_SIZE:-Standard_B1s}
 ADMIN_USER=${ADMIN_USER:-far-azd}
 SSH_KEY_PATH=${SSH_KEY_PATH:-$HOME/.ssh/id_ed25519.pub}
@@ -243,7 +243,7 @@ write_files:
       topic readwrite #
 runcmd:
   - mkdir -p /etc/mosquitto/certs
-  - if [ ! -f /etc/mosquitto/certs/ca.crt ]; then openssl req -x509 -nodes -newkey rsa:2048 -days 3650 -keyout /etc/mosquitto/certs/ca.key -out /etc/mosquitto/certs/ca.crt -subj "/CN=zeroclaw-ca"; fi
+  - if [ ! -f /etc/mosquitto/certs/ca.crt ]; then openssl req -x509 -nodes -newkey rsa:2048 -days 3650 -keyout /etc/mosquitto/certs/ca.key -out /etc/mosquitto/certs/ca.crt -subj "/CN=mqtt-saas-ca"; fi
   - if [ ! -f /etc/mosquitto/certs/server.crt ]; then openssl req -nodes -newkey rsa:2048 -keyout /etc/mosquitto/certs/server.key -out /tmp/server.csr -subj "/CN=${VM_NAME}"; fi
   - if [ ! -f /etc/mosquitto/certs/server.crt ]; then openssl x509 -req -in /tmp/server.csr -CA /etc/mosquitto/certs/ca.crt -CAkey /etc/mosquitto/certs/ca.key -CAcreateserial -out /etc/mosquitto/certs/server.crt -days 825; fi
   - chown root:mosquitto /etc/mosquitto/certs/server.key /etc/mosquitto/certs/server.crt /etc/mosquitto/certs/ca.crt

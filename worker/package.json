@@ -1,0 +1,19 @@
+{
+  "name": "mqtt-saas-azure-worker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "generate": "prisma generate",
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file=.env dist/worker.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.16.2"
+  },
+  "devDependencies": {
+    "prisma": "^6.16.2",
+    "typescript": "^5.6.2",
+    "@types/node": "^22.7.4"
+  }
+}

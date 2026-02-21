@@ -6,8 +6,7 @@ Menjalankan MVP MQTT SaaS dengan stack:
 - Azure VM Ubuntu 24 + Mosquitto
 - Azure Functions
 - Supabase
-- Cloudflare Pages
-- Azure Blob archive (opsional fase lanjut)
+- Next.js dashboard
 
 ## 1) Preflight
 
@@ -23,6 +22,15 @@ Checklist:
 - [ ] `az login` sukses
 - [ ] subscription aktif sudah dipilih
 - [ ] naming convention resource disepakati
+- [ ] baca dan setujui `docs/platform-principles.md`
+
+## Policy Guardrail (Wajib)
+
+- Source of truth data hanya Supabase.
+- Hanya satu `DATABASE_URL` aktif per environment.
+- Azure runtime tidak boleh menjalankan migration.
+- Di Azure hanya boleh `npx prisma generate`.
+- `prisma migrate` / `prisma db push` hanya dilakukan dari jalur schema owner, bukan dari Azure worker/runtime.
 
 ## 2) Provision core infra (Azure)
 
@@ -31,14 +39,33 @@ Checklist:
 - [ ] VM Ubuntu 24 (`B1s`) dibuat
 - [ ] NSG minimum port:
   - `22` (batasi IP admin)
-  - `443`
-  - `1883` (jika pakai plain MQTT)
   - `8883` (MQTT TLS)
-  - `9001` (MQTT WebSocket, jika dipakai)
 - [ ] Public IP terpasang
-- [ ] Azure Blob container untuk archive dibuat (opsional)
 - [ ] Function App (Consumption) dibuat
-- [ ] IoT Hub Free dibuat (jika dipakai)
+
+### Cara masuk Azure VM via SSH
+
+0. Verifikasi subscription aktif dan resource:
+```bash
+az account show --query "{name:name,id:id}" -o table
+az vm list -d --query "[].{rg:resourceGroup,name:name,ip:publicIps,power:powerState}" -o table
+```
+1. Ambil public IP VM:
+```bash
+az vm show -g MYLOWCOSTVM_GROUP -n zeroclaw-b1s -d --query publicIps -o tsv
+```
+2. Login SSH:
+```bash
+ssh far-azd@<VM_PUBLIC_IP>
+```
+3. Jika pakai key non-default:
+```bash
+ssh -i ~/.ssh/<PRIVATE_KEY_FILE> far-azd@<VM_PUBLIC_IP>
+```
+
+Catatan:
+- Pastikan NSG rule `allow-ssh` hanya buka port `22` untuk IP admin (`/32`), bukan `*`.
+- Panduan lengkap hardening login tanpa password ada di `docs/ssh-key-login.md`.
 
 ## 3) Configure VM
 
@@ -48,8 +75,6 @@ Checklist:
 - [ ] enable and start service
 - [ ] set auth (password file/ACL)
 - [ ] aktifkan TLS untuk `8883`
-- [ ] aktifkan WebSocket `9001` jika dashboard butuh
-- [ ] setup reverse proxy bila ada API/UI di VM
 
 Hardening minimum:
 - [ ] disable root SSH login
@@ -66,10 +91,17 @@ Supabase:
 
 Functions:
 - [ ] function ingest dari MQTT bridge/event -> Supabase PostgreSQL
-- [ ] function alert/rule engine
-- [ ] function archive ke Blob (opsional jika retention policy perlu)
+- [ ] function ingest reliability (retry/dedup/logging) terpasang
 
-Cloudflare Pages:
+Azure worker (Node + Prisma, jika dipakai):
+- [ ] jalankan `npm install`
+- [ ] jalankan `npx prisma generate`
+- [ ] jangan jalankan `npx prisma migrate` di VM/runtime
+- [ ] pastikan `PrismaClient` singleton (bukan per message)
+- [ ] pastikan worker dijalankan dengan env file (`npm run start` -> `node --env-file=.env dist/worker.js`)
+- [ ] pastikan DNS + outbound `:5432` ke host Supabase tersedia
+
+Dashboard:
 - [ ] project dashboard terdeploy
 - [ ] env var endpoint API terpasang
 - [ ] custom domain + TLS aktif (jika sudah ada domain)
@@ -80,7 +112,6 @@ Cloudflare Pages:
 - [ ] data realtime tampil di dashboard
 - [ ] alert rule terkirim
 - [ ] backup harian database aktif
-- [ ] archive >30 hari berjalan (opsional sesuai fase)
 - [ ] uptime monitoring aktif
 - [ ] cost dashboard + budget alert aktif
 
@@ -114,7 +145,6 @@ Cost spike:
 - turunkan retention sementara
 
 Data growth spike:
-- percepat archive policy (jika Blob archive sudah diaktifkan)
 - kompres payload
 - batasi field telemetry non-kritis
 
@@ -122,7 +152,7 @@ Data growth spike:
 
 - Backend live di Azure VM + Function App.
 - Ingest aktif: MQTT -> Azure Function `mqtt_ingest` -> Supabase PostgreSQL (`public.telemetry`).
-- Blob archive saat ini dinonaktifkan (container `archive` dihapus).
+- Blob archive tidak digunakan pada fase aktif saat ini.
 
 ## 9) Dashboard operations (Admin + User FE)
 
@@ -189,3 +219,14 @@ values ('<AUTH_USER_UUID>', '<TENANT_UUID>', 'owner', 'Admin Demo');
 4. Admin lupa password
 - Reset di Supabase Auth dashboard, atau
 - login sebagai user tersebut lalu ubah password di `/app/profile`.
+
+5. Worker error `Can't reach database server`
+- Cek DNS host Supabase:
+```bash
+getent hosts aws-1-ap-southeast-1.pooler.supabase.com
+```
+- Cek TCP koneksi:
+```bash
+timeout 5 bash -lc '</dev/tcp/aws-1-ap-southeast-1.pooler.supabase.com/5432' && echo OK
+```
+- Jika gagal: perbaiki rule egress NSG/firewall dan DNS resolver pada runtime worker.

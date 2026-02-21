@@ -7,14 +7,14 @@ set -euo pipefail
 #     --domain mqtt.example.com \
 #     --email you@example.com \
 #     --rg MyLowCostVM_group \
-#     --vm zeroclaw-b1s \
-#     --nsg zeroclaw-b1s-nsg
+#     --vm mqtt-saas-b1s \
+#     --nsg mqtt-saas-b1s-nsg
 
 DOMAIN=""
 EMAIL=""
 RG="MyLowCostVM_group"
-VM="zeroclaw-b1s"
-NSG="zeroclaw-b1s-nsg"
+VM="mqtt-saas-b1s"
+NSG="mqtt-saas-b1s-nsg"
 HTTP_RULE_NAME="allow-http-certbot"
 HTTP_RULE_PRIORITY="1015"
 

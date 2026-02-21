@@ -1,6 +1,6 @@
 # Deploy Backend VPS (Azure CLI)
 
-Panduan cepat untuk provisioning backend MVP di Azure VPS (VM + Mosquitto + Function App + Blob).
+Panduan cepat untuk provisioning backend MVP di Azure VPS (VM + Mosquitto + Function App).
 
 ## Prasyarat
 
@@ -13,28 +13,41 @@ Panduan cepat untuk provisioning backend MVP di Azure VPS (VM + Mosquitto + Func
 ```bash
 ./scripts/deploy_backend_vps.sh \
   --subscription <SUBSCRIPTION_ID> \
-  --rg zeroclaw-vm-rg-ea \
+  --rg MYLOWCOSTVM_GROUP \
   --location eastasia \
   --vm-name zeroclaw-b1s \
   --admin-user far-azd \
   --ssh-key ~/.ssh/id_ed25519.pub \
   --admin-cidr <YOUR_PUBLIC_IP>/32 \
-  --create-iothub \
   --yes
 ```
 
 Catatan:
 - `--admin-cidr` penting untuk membatasi SSH (contoh: `203.0.113.10/32`).
 - Port `8883` (MQTT TLS) dibuka default.
-- Port `1883` plain MQTT hanya dibuka jika pakai `--enable-plain-mqtt`.
-- Port `9001` MQTT WebSocket hanya dibuka jika pakai `--enable-websocket`.
-- Bootstrap VM membuat sertifikat TLS self-signed (`mosquitto`). Untuk production, ganti dengan cert CA/domain resmi.
+- Port `1883` publik tidak dipakai.
+- Untuk production, gunakan cert CA/domain resmi (Let's Encrypt script tersedia).
 
 ## Cek status
 
 ```bash
-./scripts/check_backend_vps_status.sh --rg zeroclaw-vm-rg-ea
+./scripts/check_backend_vps_status.sh --rg MYLOWCOSTVM_GROUP
 ```
+
+## Verifikasi resource aktif (penting)
+
+Jika muncul error `ResourceGroupNotFound`, cek subscription dan resource yang benar:
+
+```bash
+az account show --query "{name:name,id:id}" -o table
+az group list --query "[].name" -o tsv
+az vm list -d --query "[].{rg:resourceGroup,name:name,ip:publicIps,power:powerState}" -o table
+```
+
+Current known active backend (20 Februari 2026):
+- Resource Group: `MYLOWCOSTVM_GROUP`
+- VM: `zeroclaw-b1s`
+- Public IP: `20.24.82.139`
 
 ## Upgrade TLS ke Let's Encrypt (setelah domain siap)
 
@@ -50,7 +63,7 @@ Eksekusi:
   --email you@example.com \
   --rg MyLowCostVM_group \
   --vm zeroclaw-b1s \
-  --nsg zeroclaw-b1s-nsg
+  --nsg mqtt-saas-b1s-nsg
 ```
 
 Catatan:
@@ -63,7 +76,6 @@ Script menampilkan:
 - VM public IP + perintah SSH
 - endpoint MQTT TLS
 - Function App host
-- Storage account + blob container archive
 - kredensial MQTT awal
 
 Simpan kredensial MQTT output deploy ke secret manager secepatnya.

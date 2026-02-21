@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model MqttDevice {
+  id        String    @id
+  userId    String
+  deviceId  String    @unique
+  name      String?
+  lastSeen  DateTime?
+  connected Boolean   @default(false)
+  metadata  Json?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("MqttDevice")
+}
+
+model User {
+  id           String         @id
+  tenantId     String
+  email        String         @unique
+  passwordHash String?
+  fullName     String?
+  role         Role           @default(USER)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  ChatLog      ChatLog[]
+  mqttDevices  MqttDevice[]
+  Subscription Subscription[]
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("User")
+}
+
+model Tenant {
+  id        String   @id
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  users     User[]
+
+  @@map("Tenant")
+}
+
+model Telemetry {
+  id        String   @id
+  tenantId  String
+  deviceId  String
+  payload   Json
+  timestamp DateTime @default(now())
+
+  @@index([deviceId])
+  @@index([tenantId])
+  @@index([tenantId, timestamp])
+  @@index([timestamp])
+  @@map("Telemetry")
+}
+
+model ChatLog {
+  id        String   @id
+  userId    String
+  message   String
+  role      String
+  timestamp DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Subscription {
+  id        String    @id
+  userId    String
+  plan      String
+  status    String
+  startsAt  DateTime
+  endsAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime
+  User      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  USER
+  GUEST
+}

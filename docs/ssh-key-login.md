@@ -2,22 +2,26 @@
 
 This guide switches SSH login on your Azure VM from password-based login to SSH key-based login.
 
-Target VM (as of February 16, 2026):
+Target VM (as of February 20, 2026):
 - User: `far-azd`
-- Public IP: `20.239.55.227`
+- Resource Group: `MYLOWCOSTVM_GROUP`
+- VM: `zeroclaw-b1s`
+- Public IP: `20.24.82.139`
 
 If IP changes, check it with:
 
 ```bash
-az vm show -g zeroclaw-vm-rg-ea -n zeroclaw-b1s -d --query publicIps -o tsv
+az vm show -g MYLOWCOSTVM_GROUP -n zeroclaw-b1s -d --query publicIps -o tsv
 ```
+
+
 
 ## 1. Generate SSH key on your local machine
 
 If you do not have a key yet:
 
 ```bash
-ssh-keygen -t ed25519 -C "far-azd@zeroclaw-vm"
+ssh-keygen -t ed25519 -C "far-azd@mqtt-saas-vm"
 ```
 
 Default key path:
@@ -27,7 +31,7 @@ Default key path:
 ## 2. Copy key to VM (one last password login)
 
 ```bash
-ssh-copy-id far-azd@20.239.55.227
+ssh-copy-id far-azd@20.24.82.139
 ```
 
 Enter your current password when prompted.
@@ -35,7 +39,7 @@ Enter your current password when prompted.
 If `ssh-copy-id` is not installed, use:
 
 ```bash
-cat ~/.ssh/id_ed25519.pub | ssh far-azd@20.239.55.227 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+cat ~/.ssh/id_ed25519.pub | ssh far-azd@20.24.82.139 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
 ```
 
 ## 3. Verify key login works
@@ -43,7 +47,7 @@ cat ~/.ssh/id_ed25519.pub | ssh far-azd@20.239.55.227 "mkdir -p ~/.ssh && chmod 
 Open a new terminal and run:
 
 ```bash
-ssh far-azd@20.239.55.227
+ssh far-azd@20.24.82.139
 ```
 
 This should log in without asking for password.
@@ -65,7 +69,7 @@ sudo systemctl restart ssh
 From local machine:
 
 ```bash
-ssh -o PreferredAuthentications=publickey far-azd@20.239.55.227 "whoami"
+ssh -o PreferredAuthentications=publickey far-azd@20.24.82.139 "whoami"
 ```
 
 Expected output:
@@ -85,7 +89,7 @@ sudo systemctl restart ssh
 If you accidentally lock yourself out, re-enable password login via Azure RunCommand:
 
 ```bash
-az vm run-command invoke -g zeroclaw-vm-rg-ea -n zeroclaw-b1s \
+az vm run-command invoke -g MYLOWCOSTVM_GROUP -n zeroclaw-b1s \
   --command-id RunShellScript \
   --scripts "sudo sed -i 's/^#\\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config && sudo systemctl restart ssh"
 ```
